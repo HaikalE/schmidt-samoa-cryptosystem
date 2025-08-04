@@ -1,17 +1,16 @@
 #!/usr/bin/env python3
 """
-Schmidt-Samoa Cryptosystem Implementation - SECURE VERSION
+Schmidt-Samoa Cryptosystem Implementation - PRODUCTION READY VERSION
 
-Implementasi yang telah diperbaiki berdasarkan analisis keamanan:
-- Menggunakan secrets module untuk cryptographically secure random
-- Stateless design untuk thread safety
-- Efficient string encryption
-- No print statements dalam library
-- Improved Miller-Rabin parameters
+Fixed all critical bugs:
+- CRITICAL: RecursionError fixed with iterative extended_gcd
+- Performance: Using math.gcd and math.lcm instead of custom implementations
+- Efficiency: Fixed convenience functions to avoid unnecessary object creation
+- Accuracy: Fixed chunking calculation with proper math
 
 Author: HaikalE  
 Date: August 2025
-Version: 2.0 (Security Hardened)
+Version: 2.1 (Bug Fixes)
 """
 
 import secrets
@@ -44,13 +43,13 @@ class PrivateKey:
 
 class SchmidtSamoa:
     """
-    Stateless Schmidt-Samoa Cryptosystem Implementation
+    Production-Ready Schmidt-Samoa Cryptosystem Implementation
     
-    This is a secure, thread-safe implementation with:
-    - Cryptographically secure random number generation
-    - Proper Miller-Rabin parameters based on key size
-    - Efficient string-to-integer conversion
-    - Clean library interface without side effects
+    Fixed critical bugs:
+    - RecursionError in extended_gcd (now iterative)
+    - Performance improvements using math.gcd/lcm
+    - Efficient convenience functions
+    - Accurate chunking calculations
     """
     
     @staticmethod
@@ -144,40 +143,41 @@ class SchmidtSamoa:
                 return n
     
     @staticmethod
-    def gcd(a: int, b: int) -> int:
-        """Euclidean algorithm for GCD"""
-        while b:
-            a, b = b, a % b
-        return a
-    
-    @staticmethod
-    def lcm(a: int, b: int) -> int:
-        """Least Common Multiple"""
-        if a == 0 or b == 0:
-            return 0
-        return abs(a * b) // SchmidtSamoa.gcd(a, b)
-    
-    @staticmethod
     def extended_gcd(a: int, b: int) -> Tuple[int, int, int]:
         """
-        Extended Euclidean Algorithm
+        Extended Euclidean Algorithm (ITERATIVE VERSION - NO RECURSION LIMIT)
         
+        CRITICAL FIX: Previous recursive version caused RecursionError for large integers
+        used in cryptography. This iterative version has no recursion depth limit.
+        
+        Args:
+            a, b: Integers to compute extended GCD for
+            
         Returns:
             Tuple[gcd, x, y] where ax + by = gcd(a, b)
         """
         if a == 0:
             return b, 0, 1
-        
-        gcd, x1, y1 = SchmidtSamoa.extended_gcd(b % a, a)
-        x = y1 - (b // a) * x1
-        y = x1
-        
-        return gcd, x, y
+        if b == 0:
+            return a, 1, 0
+
+        # Initialize variables for extended algorithm
+        x_prev, x = 1, 0
+        y_prev, y = 0, 1
+
+        # Iterative Euclidean algorithm with coefficient tracking
+        while b:
+            q = a // b
+            a, b = b, a % b
+            x, x_prev = x_prev - q * x, x
+            y, y_prev = y_prev - q * y, y
+
+        return a, x_prev, y_prev
     
     @staticmethod
     def mod_inverse(a: int, m: int) -> int:
         """
-        Modular multiplicative inverse
+        Modular multiplicative inverse using iterative extended_gcd
         
         Args:
             a: Number to find inverse of
@@ -199,7 +199,8 @@ class SchmidtSamoa:
         
         return (x % m + m) % m
     
-    def generate_keypair(self, bits: int = 1024) -> Tuple[PublicKey, PrivateKey]:
+    @staticmethod
+    def generate_keypair(bits: int = 1024) -> Tuple[PublicKey, PrivateKey]:
         """
         Generate Schmidt-Samoa keypair
         
@@ -219,26 +220,28 @@ class SchmidtSamoa:
             pass
             
         # Generate two distinct primes
-        p = self.generate_prime(bits)
-        q = self.generate_prime(bits)
+        p = SchmidtSamoa.generate_prime(bits)
+        q = SchmidtSamoa.generate_prime(bits)
         
         # Ensure p != q (extremely unlikely but good practice)
         while q == p:
-            q = self.generate_prime(bits)
+            q = SchmidtSamoa.generate_prime(bits)
         
         # Calculate n = p²q (public key)
         n = (p * p) * q
         
         # Calculate private key d = n^(-1) mod lcm(p-1, q-1)
-        lcm_val = self.lcm(p - 1, q - 1)
-        d = self.mod_inverse(n, lcm_val)
+        # PERFORMANCE FIX: Use math.lcm instead of custom implementation
+        lcm_val = math.lcm(p - 1, q - 1)
+        d = SchmidtSamoa.mod_inverse(n, lcm_val)
         
         public_key = PublicKey(n=n)
         private_key = PrivateKey(d=d, p=p, q=q)
         
         return public_key, private_key
     
-    def encrypt(self, message: int, public_key: PublicKey) -> int:
+    @staticmethod
+    def encrypt(message: int, public_key: PublicKey) -> int:
         """
         Encrypt integer message using Schmidt-Samoa
         
@@ -264,7 +267,8 @@ class SchmidtSamoa:
         
         return pow(message, public_key.n, public_key.n)
     
-    def decrypt(self, ciphertext: int, private_key: PrivateKey) -> int:
+    @staticmethod
+    def decrypt(ciphertext: int, private_key: PrivateKey) -> int:
         """
         Decrypt ciphertext using Schmidt-Samoa
         
@@ -286,7 +290,8 @@ class SchmidtSamoa:
         pq = private_key.p * private_key.q
         return pow(ciphertext, private_key.d, pq)
     
-    def encrypt_string(self, text: str, public_key: PublicKey, encoding: str = 'utf-8') -> int:
+    @staticmethod
+    def encrypt_string(text: str, public_key: PublicKey, encoding: str = 'utf-8') -> int:
         """
         Encrypt string by converting to single large integer
         
@@ -316,9 +321,10 @@ class SchmidtSamoa:
             max_bytes = (public_key.n.bit_length() - 1) // 8
             raise ValueError(f"String too large. Maximum {max_bytes} bytes for this key size")
         
-        return self.encrypt(text_int, public_key)
+        return SchmidtSamoa.encrypt(text_int, public_key)
     
-    def decrypt_string(self, encrypted_int: int, private_key: PrivateKey, encoding: str = 'utf-8') -> str:
+    @staticmethod
+    def decrypt_string(encrypted_int: int, private_key: PrivateKey, encoding: str = 'utf-8') -> str:
         """
         Decrypt integer back to string
         
@@ -331,7 +337,7 @@ class SchmidtSamoa:
             str: Decrypted string
         """
         # Decrypt to integer
-        decrypted_int = self.decrypt(encrypted_int, private_key)
+        decrypted_int = SchmidtSamoa.decrypt(encrypted_int, private_key)
         
         # Convert integer back to bytes
         if decrypted_int == 0:
@@ -344,7 +350,8 @@ class SchmidtSamoa:
         # Convert bytes back to string
         return decrypted_bytes.decode(encoding)
     
-    def encrypt_large_string(self, text: str, public_key: PublicKey, encoding: str = 'utf-8') -> list:
+    @staticmethod
+    def encrypt_large_string(text: str, public_key: PublicKey, encoding: str = 'utf-8') -> list:
         """
         Encrypt large string by splitting into chunks
         
@@ -361,8 +368,9 @@ class SchmidtSamoa:
         if not text:
             return []
             
-        # Calculate max chunk size in bytes (leave some safety margin)
-        max_bytes = (public_key.n.bit_length() - 8) // 8  # -8 bits for safety
+        # ACCURACY FIX: Proper calculation without arbitrary "safety margin"
+        # Max integer < n, so max bytes = (n.bit_length() - 1) // 8
+        max_bytes = (public_key.n.bit_length() - 1) // 8
         
         text_bytes = text.encode(encoding)
         chunks = []
@@ -371,12 +379,13 @@ class SchmidtSamoa:
         for i in range(0, len(text_bytes), max_bytes):
             chunk = text_bytes[i:i + max_bytes]
             chunk_int = int.from_bytes(chunk, 'big')
-            encrypted_chunk = self.encrypt(chunk_int, public_key)
+            encrypted_chunk = SchmidtSamoa.encrypt(chunk_int, public_key)
             chunks.append(encrypted_chunk)
         
         return chunks
     
-    def decrypt_large_string(self, encrypted_chunks: list, private_key: PrivateKey, encoding: str = 'utf-8') -> str:
+    @staticmethod
+    def decrypt_large_string(encrypted_chunks: list, private_key: PrivateKey, encoding: str = 'utf-8') -> str:
         """
         Decrypt list of encrypted chunks back to string
         
@@ -394,7 +403,7 @@ class SchmidtSamoa:
         decrypted_bytes = b''
         
         for encrypted_chunk in encrypted_chunks:
-            decrypted_int = self.decrypt(encrypted_chunk, private_key)
+            decrypted_int = SchmidtSamoa.decrypt(encrypted_chunk, private_key)
             
             if decrypted_int == 0:
                 continue
@@ -407,27 +416,39 @@ class SchmidtSamoa:
         return decrypted_bytes.decode(encoding)
 
 
-# Convenience functions for backward compatibility and ease of use
+# EFFICIENCY FIX: Convenience functions now call static methods directly
+# instead of creating unnecessary object instances
+
 def generate_keypair(bits: int = 1024) -> Tuple[PublicKey, PrivateKey]:
-    """Convenience function to generate keypair"""
-    return SchmidtSamoa().generate_keypair(bits)
+    """Convenience function to generate keypair - calls static method directly"""
+    return SchmidtSamoa.generate_keypair(bits=bits)
 
 
 def encrypt(message: int, public_key: PublicKey) -> int:
-    """Convenience function to encrypt integer"""
-    return SchmidtSamoa().encrypt(message, public_key)
+    """Convenience function to encrypt integer - calls static method directly"""
+    return SchmidtSamoa.encrypt(message, public_key)
 
 
 def decrypt(ciphertext: int, private_key: PrivateKey) -> int:
-    """Convenience function to decrypt integer"""
-    return SchmidtSamoa().decrypt(ciphertext, private_key)
+    """Convenience function to decrypt integer - calls static method directly"""
+    return SchmidtSamoa.decrypt(ciphertext, private_key)
 
 
 def encrypt_string(text: str, public_key: PublicKey) -> int:
-    """Convenience function to encrypt string"""
-    return SchmidtSamoa().encrypt_string(text, public_key)
+    """Convenience function to encrypt string - calls static method directly"""
+    return SchmidtSamoa.encrypt_string(text, public_key)
 
 
 def decrypt_string(encrypted_int: int, private_key: PrivateKey) -> str:
-    """Convenience function to decrypt string"""
-    return SchmidtSamoa().decrypt_string(encrypted_int, private_key)
+    """Convenience function to decrypt string - calls static method directly"""
+    return SchmidtSamoa.decrypt_string(encrypted_int, private_key)
+
+
+def encrypt_large_string(text: str, public_key: PublicKey) -> list:
+    """Convenience function to encrypt large string - calls static method directly"""
+    return SchmidtSamoa.encrypt_large_string(text, public_key)
+
+
+def decrypt_large_string(encrypted_chunks: list, private_key: PrivateKey) -> str:
+    """Convenience function to decrypt large string - calls static method directly"""
+    return SchmidtSamoa.decrypt_large_string(encrypted_chunks, private_key)
