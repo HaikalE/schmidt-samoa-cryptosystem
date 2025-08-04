@@ -1,0 +1,14 @@
+# Schmidt-Samoa Cryptosystem Requirements
+# Tidak ada dependencies eksternal yang diperlukan
+# Menggunakan library standard Python:
+# - random (untuk generate bilangan acak)
+# - math (untuk operasi matematika)  
+# - typing (untuk type hints)
+
+# Python version requirement
+python>=3.6
+
+# Optional: untuk development dan testing
+# pytest>=7.0.0
+# black>=22.0.0
+# flake8>=4.0.0
