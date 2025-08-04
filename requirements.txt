@@ -1,14 +1,24 @@
-# Schmidt-Samoa Cryptosystem Requirements
-# Tidak ada dependencies eksternal yang diperlukan
-# Menggunakan library standard Python:
-# - random (untuk generate bilangan acak)
-# - math (untuk operasi matematika)  
-# - typing (untuk type hints)
+# Schmidt-Samoa Cryptosystem - SECURE VERSION Requirements
 
-# Python version requirement
-python>=3.6
+# Python version requirement (for dataclasses support)
+python>=3.7
 
-# Optional: untuk development dan testing
+# Standard library modules used (no external dependencies):
+# - secrets (cryptographically secure random number generation)
+# - math (mathematical operations)
+# - typing (type hints)
+# - dataclasses (type-safe key classes) - requires Python 3.7+
+# - threading (for thread safety examples)
+# - time (for performance benchmarks)
+
+# Development dependencies (optional)
 # pytest>=7.0.0
 # black>=22.0.0
-# flake8>=4.0.0
+# mypy>=0.991
+# flake8>=5.0.0
+
+# Security Note:
+# This version uses 'secrets' module instead of 'random' for
+# cryptographically secure random number generation.
+# The 'secrets' module is available in Python 3.6+ but we require
+# Python 3.7+ for dataclasses support.
